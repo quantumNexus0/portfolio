@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Get the repository name from package.json or environment variable
+const repoName = 'portfolio'; // Replace with your repository name
+
 export default defineConfig({
   plugins: [react()],
-  base: '/',
+  base: process.env.NODE_ENV === 'production' ? `/${repoName}/` : '/',
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
@@ -27,7 +30,11 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           ui: ['lucide-react']
-        }
+        },
+        // Ensure consistent chunk names
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]'
       }
     },
     sourcemap: false
