@@ -9,6 +9,10 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
+        // Ensure consistent chunk names and paths
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           ui: ['lucide-react']
