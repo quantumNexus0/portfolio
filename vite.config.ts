@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/portfolio/', // Change this to match your repository name
+  base: '/portfolio/',
   build: {
     outDir: 'dist',
     sourcemap: false,
@@ -15,9 +16,13 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['lucide-react']
+          ui: ['lucide-react', 'framer-motion']
         }
       }
     }
+  },
+  server: {
+    port: 5173,
+    strictPort: true
   }
 });
