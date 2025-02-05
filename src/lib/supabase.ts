@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Get the environment variables
+// Get the environment variables with proper validation
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -10,8 +10,19 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase configuration');
 }
 
+// Ensure the URL is properly formatted
+const validateUrl = (url: string) => {
+  try {
+    new URL(url);
+    return url;
+  } catch (e) {
+    console.error('Invalid Supabase URL:', e);
+    throw new Error('Invalid Supabase URL configuration');
+  }
+};
+
 // Create client with validated URL
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createClient(validateUrl(supabaseUrl), supabaseKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
