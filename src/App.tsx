@@ -7,11 +7,8 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
 function App() {
-  // Get the base URL from Vite's environment
-  const baseUrl = import.meta.env.BASE_URL;
-
   return (
-    <BrowserRouter basename={baseUrl}>
+    <BrowserRouter basename="/portfolio">
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <main className="flex-grow">
