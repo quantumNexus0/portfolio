@@ -7,17 +7,13 @@ export default defineConfig({
   base: '/portfolio/',
   build: {
     outDir: 'dist',
+    emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
       output: {
-        // Ensure consistent chunk names and paths
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]',
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['lucide-react', 'framer-motion']
-        }
+        assetFileNames: 'assets/[name]-[hash][extname]'
       }
     }
   },
