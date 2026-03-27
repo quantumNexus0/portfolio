@@ -10,6 +10,30 @@ The project has been migrated from Supabase to a custom backend for better contr
 - **Backend**: Node.js, Express, Mongoose (MongoDB).
 - **Auth**: JWT (JSON Web Tokens) with secure password hashing via `bcryptjs`.
 
+## 📊 Architecture Diagram
+```mermaid
+graph TD
+    subgraph Frontend
+        A[Browser / React App] --> B[API Client - src/lib/api.ts]
+    end
+
+    subgraph Backend
+        B --> C[Express Server]
+        C --> D[Auth Middleware - JWT]
+        D --> E[API Routes]
+        E --> F[Mongoose Models]
+    end
+
+    subgraph Database
+        F --> G[(MongoDB Atlas)]
+    end
+
+    subgraph Security
+        D -.-> |Validates| H[JWT Token]
+        F -.-> |Hashed Passwords| I[bcryptjs]
+    end
+```
+
 ## 📂 Project Structure
 - `/` - Root directory containing the Vite/React frontend.
 - `/server` - Backend directory with Express API, Mongoose models, and authentication logic.
@@ -61,9 +85,10 @@ The frontend will be available at `http://localhost:5173`.
 
 ## 🔐 Admin Authentication
 To manage your blog posts, projects, and profile, log in to the `/login` route with your admin credentials.
-- **Default Email**: `vipulyadav503@gmail.com`
-- **Default Password**: `Yogender@2003`
+
+- **Email**: Enter your admin email (used during seeding).
+- **Password**: Enter your admin password (used during seeding).
 
 ---
 > [!IMPORTANT]
-> Change your default password immediately after your first login for security.
+> The default credentials were used during the initial seeding process. Please update your password immediately after your first login for security and Ensure your `.env` file is never committed to version control.
