@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 
 function Login() {
   const navigate = useNavigate();
@@ -10,27 +10,11 @@ function Login() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    checkUser();
-  }, []);
-
-  async function checkUser() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
+    const token = localStorage.getItem('portfolio_token');
+    if (token) {
       navigate('/admin');
     }
-  }
-
-  async function createInitialProfile(userId: string) {
-    const { error } = await supabase
-      .from('profiles')
-      .insert([{ id: userId }])
-      .select()
-      .single();
-    
-    if (error && error.code !== '23505') { // Ignore duplicate key violations
-      console.error('Error creating profile:', error);
-    }
-  }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,24 +28,16 @@ function Login() {
     }
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (signInError) {
-        console.error('Sign in error:', signInError);
-        setError('Invalid login credentials. Please try again.');
-      } else if (data?.user) {
-        // Create initial profile if it doesn't exist
-        await createInitialProfile(data.user.id);
-        
-        localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
+      const data = await api.auth.login(email, password);
+      
+      if (data.token) {
+        localStorage.setItem('portfolio_token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         navigate('/admin');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError('An error occurred during login. Please try again.');
+      setError(err.message || 'An error occurred during login. Please try again.');
     }
 
     setLoading(false);

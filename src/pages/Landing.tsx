@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Github, Instagram, Code, BookOpen, Heart, Mail, Share2, Twitter, Facebook, Linkedin } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import ReactMarkdown from 'react-markdown';
 
 interface Project {
-  id: number;
+  _id: string;
   title: string;
   description: string;
   link: string;
@@ -13,10 +13,10 @@ interface Project {
 }
 
 interface BlogPost {
-  id: string;
+  _id: string;
   title: string;
   content: string;
-  created_at: string;
+  createdAt: string;
   video_url?: string;
 }
 
@@ -35,34 +35,30 @@ function Landing() {
   }, []);
 
   async function fetchBlogPosts() {
-    const { data } = await supabase
-      .from('blog_posts')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (data) setBlogPosts(data);
+    try {
+      const data = await api.posts.getAll();
+      if (Array.isArray(data)) {
+        setBlogPosts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching blog posts:', error);
+    }
   }
 
   async function fetchProfile() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      let { data, error } = await supabase
-        .from('profiles')
-        .select('avatar_url')
-        .eq('id', user.id)
-        .maybeSingle(); // Use maybeSingle instead of single to handle no results gracefully
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      if (data?.avatar_url) {
-        setProfileImage(data.avatar_url);
+      // In this version, we fetch the admin's profile by their email or a fixed ID.
+      // For now, I'll fetch all profiles and take the first one, or handle it differently.
+      // Given the user only has one admin, this is fine for a portfolio.
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.id) {
+        const data = await api.profile.get(user.id);
+        if (data && data.avatar_url) {
+          setProfileImage(data.avatar_url);
+        }
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching profile:', error);
     }
   }
 
@@ -102,14 +98,14 @@ function Landing() {
 
   const projects: Project[] = [
     {
-      id: 1,
+      _id: "1",
       title: "Legal Services Platform",
       description: "A platform enhancing access to legal services and improving client-lawyer interactions through innovative technology.",
       link: "https://github.com/quantumNexus0/LegalService",
       image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800"
     },
     {
-      id: 2,
+      _id: "2",
       title: "Railway Reservation System",
       description: "GUI-based desktop application for managing railway reservations using Java (JFrame) and MySQL.",
       link: "https://github.com/quantumNexus0/RailwayReservationSystem-",
@@ -231,7 +227,7 @@ function Landing() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {projects.map((project, index) => (
               <motion.div
-                key={project.id}
+                key={project._id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -278,7 +274,7 @@ function Landing() {
           <div className="grid grid-cols-1 gap-8">
             {blogPosts.map((post, index) => (
               <motion.article
-                key={post.id}
+                key={post._id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -289,31 +285,31 @@ function Landing() {
                   <h3 className="text-xl font-semibold">{post.title}</h3>
                   <div className="relative">
                     <button
-                      onClick={() => setActiveShare(activeShare === post.id ? null : post.id)}
+                      onClick={() => setActiveShare(activeShare === post._id ? null : post._id)}
                       className="p-2 hover:bg-gray-200 rounded-full transition-colors duration-300"
                     >
                       <Share2 size={20} />
                     </button>
-                    {activeShare === post.id && (
+                    {activeShare === post._id && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className="absolute right-0 mt-2 py-2 w-48 bg-white rounded-lg shadow-xl z-10"
                       >
                         <button
-                          onClick={() => handleShare(post.id, 'twitter')}
+                          onClick={() => handleShare(post._id, 'twitter')}
                           className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center"
                         >
                           <Twitter size={16} className="mr-2" /> Share on Twitter
                         </button>
                         <button
-                          onClick={() => handleShare(post.id, 'facebook')}
+                          onClick={() => handleShare(post._id, 'facebook')}
                           className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center"
                         >
                           <Facebook size={16} className="mr-2" /> Share on Facebook
                         </button>
                         <button
-                          onClick={() => handleShare(post.id, 'linkedin')}
+                          onClick={() => handleShare(post._id, 'linkedin')}
                           className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center"
                         >
                           <Linkedin size={16} className="mr-2" /> Share on LinkedIn
@@ -340,7 +336,7 @@ function Landing() {
                   </div>
                 )}
                 <p className="text-sm text-gray-500 mt-4">
-                  {new Date(post.created_at).toLocaleDateString()}
+                  {new Date(post.createdAt).toLocaleDateString()}
                 </p>
               </motion.article>
             ))}

@@ -1,32 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Trash2, Plus, Upload, X, Camera } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 
 interface BlogPost {
-  id: string;
+  _id: string;
   title: string;
   content: string;
   video_url?: string;
-  created_at: string;
-  user_id: string;
+  createdAt: string;
+  user: string;
 }
 
 interface Project {
-  id: string;
+  _id: string;
   title: string;
   description: string;
   link: string;
   image: string;
-  user_id: string;
+  user: string;
 }
 
 interface AboutSection {
-  id: string;
+  _id: string;
   title: string;
   description: string;
   icon: string;
-  user_id: string;
+  user: string;
 }
 
 interface ProgressEvent {
@@ -78,9 +78,9 @@ function Admin() {
     fetchProfile();
   }, []);
 
-  async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+  function checkAuth() {
+    const token = localStorage.getItem('portfolio_token');
+    if (!token) {
       navigate('/login');
     }
   }
@@ -93,69 +93,34 @@ function Admin() {
 
   async function fetchProfile() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return;
+      const user = JSON.parse(userStr);
 
-      let { data, error } = await supabase
-        .from('profiles')
-        .select('avatar_url')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      if (data?.avatar_url) {
+      const data = await api.profile.get(user.id);
+      if (data && data.avatar_url) {
         setAvatarUrl(data.avatar_url);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching profile:', error);
     }
   }
 
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     try {
       setUploading(true);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user');
+      const userStr = localStorage.getItem('user');
+      if (!userStr) throw new Error('No user');
+      const user = JSON.parse(userStr);
 
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}-${Math.random()}${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          avatar_url: publicUrl,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'id'
-        });
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      setAvatarUrl(publicUrl);
-      alert('Profile picture updated successfully!');
+      // NOTE: Still using a placeholder logic for avatar upload as we didn't migrate storage
+      // In a real app, you'd upload to your own storage or Cloundinary etc.
+      // For now, let's assume the user provides a URL or we use the old one.
+      alert('Avatar upload is currently restricted to URL updates in this migration. Please use the profile API.');
+      
     } catch (error) {
       console.error('Error uploading avatar:', error);
       alert('Error uploading avatar!');
@@ -165,68 +130,32 @@ function Admin() {
   }
 
   async function fetchPosts() {
-    const { data } = await supabase
-      .from('blog_posts')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const data = await api.posts.getAll();
     if (data) setPosts(data);
   }
 
   async function fetchProjects() {
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .order('title', { ascending: true });
+    const data = await api.projects.getAll();
     if (data) setProjects(data);
   }
 
   async function fetchAboutSections() {
-    const { data } = await supabase
-      .from('about_sections')
-      .select('*')
-      .order('title', { ascending: true });
+    const data = await api.about.getAll();
     if (data) setAboutSections(data);
   }
 
   async function handleVideoUpload(file: File) {
-    if (!file) return null;
-    
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}${Date.now()}.${fileExt}`;
-      const filePath = `videos/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('blog-videos')
-        .upload(filePath, file, {
-          onUploadProgress: (progress: ProgressEvent) => {
-            const percent = (progress.loaded / progress.total) * 100;
-            setUploadProgress(Math.round(percent));
-          },
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('blog-videos')
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading video:', error);
-      alert('Error uploading video. Please try again.');
-      return null;
-    }
+    // Placeholder as storage is not migrated
+    alert('Video upload is restricted. Please use direct URLs.');
+    return null;
   }
 
   async function handleBlogSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
       alert('Please log in to create posts');
       setLoading(false);
       return;
@@ -241,40 +170,30 @@ function Admin() {
     }
 
     if (editingPost) {
-      const { error } = await supabase
-        .from('blog_posts')
-        .update({
+      try {
+        await api.posts.update(editingPost._id, {
           title,
           content,
           video_url: finalVideoUrl || null
-        })
-        .eq('id', editingPost.id);
-
-      if (error) {
-        alert('Error updating post');
-      } else {
+        });
         alert('Post updated successfully!');
         clearBlogForm();
         fetchPosts();
+      } catch (err) {
+        alert('Error updating post');
       }
     } else {
-      const { error } = await supabase
-        .from('blog_posts')
-        .insert([
-          {
-            title,
-            content,
-            video_url: finalVideoUrl || null,
-            user_id: user.id
-          }
-        ]);
-
-      if (error) {
-        alert('Error creating post');
-      } else {
+      try {
+        await api.posts.create({
+          title,
+          content,
+          video_url: finalVideoUrl || null
+        });
         alert('Post created successfully!');
         clearBlogForm();
         fetchPosts();
+      } catch (err) {
+        alert('Error creating post');
       }
     }
 
@@ -286,50 +205,40 @@ function Admin() {
     e.preventDefault();
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
       alert('Please log in to manage projects');
       setLoading(false);
       return;
     }
 
     if (editingProject) {
-      const { error } = await supabase
-        .from('projects')
-        .update({
+      try {
+        await api.projects.update(editingProject._id, {
           title: projectTitle,
           description: projectDescription,
           link: projectLink,
           image: projectImage
-        })
-        .eq('id', editingProject.id);
-
-      if (error) {
-        alert('Error updating project');
-      } else {
+        });
         alert('Project updated successfully!');
         clearProjectForm();
         fetchProjects();
+      } catch (err) {
+        alert('Error updating project');
       }
     } else {
-      const { error } = await supabase
-        .from('projects')
-        .insert([
-          {
-            title: projectTitle,
-            description: projectDescription,
-            link: projectLink,
-            image: projectImage,
-            user_id: user.id
-          }
-        ]);
-
-      if (error) {
-        alert('Error creating project');
-      } else {
+      try {
+        await api.projects.create({
+          title: projectTitle,
+          description: projectDescription,
+          link: projectLink,
+          image: projectImage
+        });
         alert('Project created successfully!');
         clearProjectForm();
         fetchProjects();
+      } catch (err) {
+        alert('Error creating project');
       }
     }
 
@@ -340,48 +249,38 @@ function Admin() {
     e.preventDefault();
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
       alert('Please log in to manage about sections');
       setLoading(false);
       return;
     }
 
     if (editingAbout) {
-      const { error } = await supabase
-        .from('about_sections')
-        .update({
+      try {
+        await api.about.update(editingAbout._id, {
           title: aboutTitle,
           description: aboutDescription,
           icon: aboutIcon
-        })
-        .eq('id', editingAbout.id);
-
-      if (error) {
-        alert('Error updating about section');
-      } else {
+        });
         alert('About section updated successfully!');
         clearAboutForm();
         fetchAboutSections();
+      } catch (err) {
+        alert('Error updating about section');
       }
     } else {
-      const { error } = await supabase
-        .from('about_sections')
-        .insert([
-          {
-            title: aboutTitle,
-            description: aboutDescription,
-            icon: aboutIcon,
-            user_id: user.id
-          }
-        ]);
-
-      if (error) {
-        alert('Error creating about section');
-      } else {
+      try {
+        await api.about.create({
+          title: aboutTitle,
+          description: aboutDescription,
+          icon: aboutIcon
+        });
         alert('About section created successfully!');
         clearAboutForm();
         fetchAboutSections();
+      } catch (err) {
+        alert('Error creating about section');
       }
     }
 
@@ -443,32 +342,31 @@ function Admin() {
 
   async function handleDelete(type: 'blog' | 'project' | 'about', id: string) {
     if (window.confirm(`Are you sure you want to delete this ${type}?`)) {
-      let error;
-      switch (type) {
-        case 'blog':
-          ({ error } = await supabase.from('blog_posts').delete().eq('id', id));
-          if (!error) fetchPosts();
-          break;
-        case 'project':
-          ({ error } = await supabase.from('projects').delete().eq('id', id));
-          if (!error) fetchProjects();
-          break;
-        case 'about':
-          ({ error } = await supabase.from('about_sections').delete().eq('id', id));
-          if (!error) fetchAboutSections();
-          break;
-      }
-
-      if (error) {
-        alert(`Error deleting ${type}`);
-      } else {
+      try {
+        switch (type) {
+          case 'blog':
+            await api.posts.delete(id);
+            fetchPosts();
+            break;
+          case 'project':
+            await api.projects.delete(id);
+            fetchProjects();
+            break;
+          case 'about':
+            await api.about.delete(id);
+            fetchAboutSections();
+            break;
+        }
         alert(`${type} deleted successfully!`);
+      } catch (err) {
+        alert(`Error deleting ${type}`);
       }
     }
   }
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    localStorage.removeItem('portfolio_token');
+    localStorage.removeItem('user');
     navigate('/login');
   }
 
@@ -648,13 +546,13 @@ function Admin() {
             <div className="bg-white shadow-md rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Manage Posts</h2>
               <div className="space-y-4">
-                {posts.map((post) => (
-                  <div key={post.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                {posts.map((post: BlogPost) => (
+                  <div key={post._id} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-semibold">{post.title}</h3>
                         <p className="text-sm text-gray-500">
-                          {new Date(post.created_at).toLocaleDateString()}
+                          {new Date(post.createdAt).toLocaleDateString()}
                         </p>
                         {post.video_url && (
                           <p className="text-sm text-blue-600">Has video</p>
@@ -668,7 +566,7 @@ function Admin() {
                           <Pencil size={20} />
                         </button>
                         <button
-                          onClick={() => handleDelete('blog', post.id)}
+                          onClick={() => handleDelete('blog', post._id)}
                           className="text-red-600 hover:text-red-800"
                         >
                           <Trash2 size={20} />
@@ -765,8 +663,8 @@ function Admin() {
             <div className="bg-white shadow-md rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Manage Projects</h2>
               <div className="space-y-4">
-                {projects.map((project) => (
-                  <div key={project.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                {projects.map((project: Project) => (
+                  <div key={project._id} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-semibold">{project.title}</h3>
@@ -780,7 +678,7 @@ function Admin() {
                           <Pencil size={20} />
                         </button>
                         <button
-                          onClick={() => handleDelete('project', project.id)}
+                          onClick={() => handleDelete('project', project._id)}
                           className="text-red-600 hover:text-red-800"
                         >
                           <Trash2 size={20} />
@@ -865,8 +763,8 @@ function Admin() {
             <div className="bg-white shadow-md rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Manage About Sections</h2>
               <div className="space-y-4">
-                {aboutSections.map((section) => (
-                  <div key={section.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                {aboutSections.map((section: AboutSection) => (
+                  <div key={section._id} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-semibold">{section.title}</h3>
@@ -880,7 +778,7 @@ function Admin() {
                           <Pencil size={20} />
                         </button>
                         <button
-                          onClick={() => handleDelete('about', section.id)}
+                          onClick={() => handleDelete('about', section._id)}
                           className="text-red-600 hover:text-red-800"
                         >
                           <Trash2 size={20} />
