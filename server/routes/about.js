@@ -3,10 +3,11 @@ const router = express.Router();
 const AboutSection = require('../models/AboutSection');
 const auth = require('../middleware/auth');
 
-// Get all about sections
+// Get all about sections for a specific user
 router.get('/', async (req, res) => {
   try {
-    const sections = await AboutSection.find().sort({ title: 1 });
+    const filter = req.query.userId ? { user: req.query.userId } : {};
+    const sections = await AboutSection.find(filter).sort({ title: 1 });
     res.json(sections);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -36,6 +37,11 @@ router.put('/:id', auth, async (req, res) => {
     const section = await AboutSection.findById(req.params.id);
     if (!section) return res.status(404).json({ message: 'About section not found' });
 
+    // Ownership check
+    if (section.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'User not authorized' });
+    }
+
     if (req.body.title) section.title = req.body.title;
     if (req.body.description) section.description = req.body.description;
     if (req.body.icon) section.icon = req.body.icon;
@@ -52,6 +58,11 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const section = await AboutSection.findById(req.params.id);
     if (!section) return res.status(404).json({ message: 'About section not found' });
+
+    // Ownership check
+    if (section.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'User not authorized' });
+    }
 
     await section.deleteOne();
     res.json({ message: 'About section deleted' });

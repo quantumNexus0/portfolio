@@ -10,14 +10,34 @@ const getHeaders = () => {
 
 export const api = {
   auth: {
-    login: async (email, password) => {
+    login: async (email: string, password: string, recaptchaToken?: string) => {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, recaptchaToken })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
+      return data;
+    },
+    signup: async (email: string, password: string, recaptchaToken?: string) => {
+      const res = await fetch(`${API_URL}/auth/signup`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ email, password, recaptchaToken })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Signup failed');
+      return data;
+    },
+    googleLogin: async (credential: string) => {
+      const res = await fetch(`${API_URL}/auth/google-login`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ credential })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Google login failed');
       return data;
     }
   },

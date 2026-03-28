@@ -3,10 +3,11 @@ const router = express.Router();
 const Project = require('../models/Project');
 const auth = require('../middleware/auth');
 
-// Get all projects
+// Get all projects for a specific user
 router.get('/', async (req, res) => {
   try {
-    const projects = await Project.find().sort({ title: 1 });
+    const filter = req.query.userId ? { user: req.query.userId } : {};
+    const projects = await Project.find(filter).sort({ title: 1 });
     res.json(projects);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -37,6 +38,11 @@ router.put('/:id', auth, async (req, res) => {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
+    // Ownership check
+    if (project.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'User not authorized' });
+    }
+
     if (req.body.title) project.title = req.body.title;
     if (req.body.description) project.description = req.body.description;
     if (req.body.link) project.link = req.body.link;
@@ -54,6 +60,11 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    // Ownership check
+    if (project.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'User not authorized' });
+    }
 
     await project.deleteOne();
     res.json({ message: 'Project deleted' });

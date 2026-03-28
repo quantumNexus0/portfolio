@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { api } from '../lib/api';
-import { Rocket, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Rocket, Mail, Lock, ArrowRight, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-function Login() {
+function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
@@ -17,18 +18,15 @@ function Login() {
 
   const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"; // Test key
 
-  useEffect(() => {
-    const token = localStorage.getItem('portfolio_token');
-    if (token) {
-      navigate('/admin');
-    }
-  }, [navigate]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     
-    // Only check if key is provided
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     if (recaptchaSiteKey && !recaptchaToken) {
       setError('Please complete the reCAPTCHA');
       return;
@@ -37,12 +35,12 @@ function Login() {
     setLoading(true);
 
     try {
-      const data = await api.auth.login(email, password, recaptchaToken || undefined);
+      const data = await api.auth.signup(email, password, recaptchaToken || undefined);
       localStorage.setItem('portfolio_token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/admin');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Signup failed');
       recaptchaRef.current?.reset();
       setRecaptchaToken(null);
     } finally {
@@ -59,7 +57,7 @@ function Login() {
       localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/admin');
     } catch (err: any) {
-      setError(err.message || 'Google login failed');
+      setError(err.message || 'Google signup failed');
     } finally {
       setLoading(false);
     }
@@ -87,8 +85,8 @@ function Login() {
             >
               <Rocket className="text-white" size={32} />
             </motion.div>
-            <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
-            <p className="text-gray-400">Log in to manage your portfolio</p>
+            <h2 className="text-3xl font-bold text-white mb-2">Create Account</h2>
+            <p className="text-gray-400">Join the next generation of portfolios</p>
           </div>
 
           <div className="mb-8 flex justify-center">
@@ -97,7 +95,7 @@ function Login() {
               onError={() => setError('Google Authentication Failed')}
               theme="filled_blue"
               shape="pill"
-              text="signin_with"
+              text="signup_with"
             />
           </div>
 
@@ -151,6 +149,23 @@ function Login() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300 ml-1">Confirm Password</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500">
+                  <CheckCircle size={18} />
+                </div>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="block w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+            </div>
+
             {recaptchaSiteKey && (
               <div className="flex justify-center transform scale-[0.85] -mx-4">
                 <ReCAPTCHA
@@ -171,16 +186,16 @@ function Login() {
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
-                  Log In <ArrowRight className="ml-2" size={20} />
+                  Get Started <ArrowRight className="ml-2" size={20} />
                 </>
               )}
             </button>
           </form>
 
           <div className="mt-8 text-center text-gray-400">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-blue-500 hover:text-blue-400 font-semibold transition-colors">
-              Sign Up
+            Already have an account?{' '}
+            <Link to="/login" className="text-blue-500 hover:text-blue-400 font-semibold transition-colors">
+              Log In
             </Link>
           </div>
         </div>
@@ -189,4 +204,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default Signup;
